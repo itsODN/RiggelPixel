@@ -1,7 +1,7 @@
 import pygame
 from pygame.locals import *
 from pygame.math import Vector2
-from math import tan, radians, degrees, copysign
+from math import sin, radians, degrees, copysign, sqrt
 
 class MainGame:
     def __init__(self):
@@ -36,7 +36,7 @@ class MainGame:
             self.event_handler.update()
 
             for obj in self.objects: 
-                obj.update()
+                obj.update(self.dt)
 
             
 
@@ -49,6 +49,7 @@ class MainGame:
 
             pygame.display.flip()
             self.dt = self.clock.tick(self.FPS)
+            
             
 
     def quit(self):
@@ -183,6 +184,80 @@ class GameObject:
     def update(self):
         return 0 
 
+class Ball2(GameObject):
+    def __init__(self, master):
+        super().__init__(master)
+
+        self.position = 100,200
+        self.color = 0,0,200
+        self.radius = 20
+        
+        self.current_speed = 20
+        self.max_speed = 50
+        self.acceleration = 2
+        self.deacceleration = 2
+
+        self.board_angles = (0,0)
+        self.max_angle = 45
+        self.direction = pygame.Vector2(0,0)
+
+        self.subscribe_event(["w","a","s","d"])
+        self.subscribe_collision()
+
+    def move(self, dt):
+        x, y = self.board_angles
+        if self.events["w"]:
+            y -= 0.1 * dt
+        if self.events["s"]:
+            y += 0.1 * dt
+        if self.events["a"]:
+            x -= 0.1 * dt
+        if self.events["d"]:
+            x += 0.1 * dt
+
+        if x > self.max_angle:
+            x = self.max_angle 
+        elif x < self.max_angle * -1:
+            x = self.max_angle * -1
+        if y > self.max_angle:
+            y = self.max_angle
+        elif y < self.max_angle * -1:
+            y = self.max_angle * -1
+        
+        self.board_angles = x, y
+
+        if x == 0 and y == 0:
+            self.direction = pygame.Vector2(0,0)
+        else: 
+            self.direction = pygame.Vector2(x,y)
+            
+            self.direction.scale_to_length(40)
+            self.direction = pygame.Vector2(self.direction[0]+self.position[0], self.direction[1]+self.position[1])
+    
+    def get_translation(self, dt):
+        
+
+        dx = 0.5 * self.acceleration * dt**2 + sqrt(2*self.acceleration * sin(radians(self.board_angles[0]))*self.position[0]*dt) + self.position[0]
+
+        dy = 0.5 * self.acceleration * dt**2 + sqrt(2*self.acceleration * sin(radians(self.board_angles[1]))*self.position[1]*dt) + self.position[1]
+
+        return dx, dy
+
+    def update(self, dt):
+        self.move(dt)
+        dx, dy = self.get_translation(dt)
+        self.new_position = self.position[0]+dx, self.position[1]+dy
+        self.text_surf = self.master.myfont.render("{} {}".format(self.board_angles, self.direction), False, (0,255,0))
+
+    
+    def render(self):
+        pygame.draw.circle(self.master.screen, self.color, self.position, self.radius)
+        pygame.draw.line(self.master.screen, (255,0,0), self.position, self.direction, 2)
+        pygame.draw.line(self.master.screen, (255,255,0), self.position, self.new_position, 2)
+        self.master.screen.blit(self.text_surf, (0,0))
+
+        
+
 class Ball(GameObject):
     def __init__(self, master):
         super().__init__(master)
@@ -207,10 +282,10 @@ class Ball(GameObject):
 
     def update(self):
         self.get_dt()
-        dv = self.get_dv2()
+        dv = self.get_dv()
         self.move(dv)
 
-        self.textsurf = self.master.myfont.render(str(dv), False, (0,255,0))
+        self.textsurf = self.master.myfont.render(str(self.dt), False, (0,255,0))
 
     def render(self):
         pygame.draw.circle(self.master.screen, self.color, self.rect.center, self.radius)
@@ -280,7 +355,7 @@ class Car(GameObject):
         self.velocity = Vector2(0.0, 0.0)
         self.angle    = 0.0
         self.length   = 4
-        self.max_acceleration =0.5 
+        self.max_acceleration =5 
         self.max_steering = 30
 
         self.acceleration = 0.0
@@ -339,5 +414,5 @@ class Car(GameObject):
 
 if __name__ == "__main__":
     with MainGame() as game:
-        car = Car(game)
+        ball = Ball2(game)
         game.main_loop()
