@@ -184,6 +184,72 @@ class GameObject:
     def update(self):
         return 0 
 
+class Boat(GameObject):
+    def __init__(self, master):
+        super().__init__(master)
+        self.position = pygame.Vector2(100,100)
+        self.color = 0,0,200
+        self.dimension = 20,20
+
+        self.velocity = 50
+        self.accel_t  = 0
+        self.accelerating = False
+
+        self.subscribe_event(["w","a","s","d"])
+
+    def update(self, dt):
+        self.move(dt)
+
+    def render(self):
+        x = int(self.position[0])
+        y = int(self.position[1])
+        pygame.draw.circle(self.master.screen, (255,0,0), (x,y), 20)
+
+    def move(self, dt):
+        dt = dt / 1000
+        x,y = 0,0
+
+        if self.events["w"]:
+            y -= 1
+        if self.events["s"]:
+            y += 1
+        if self.events["a"]:
+            x -= 1
+        if self.events["d"]:
+            x += 1
+
+        self.direction = pygame.Vector2(x,y)
+
+        if True in self.events.values():
+            self.accelerating = True
+        else:
+            self.accelerating = False
+
+        self.accelerate(dt)
+
+
+
+        print(self.accelerating, self.velocity)
+        new_pos = pygame.Vector2(self.velocity * self.direction * dt)
+        self.position += new_pos
+
+    def accelerate(self,dt):
+        dt = dt
+        if self.accelerating:
+            self.accel_t += 100*dt
+        else:
+            self.accel_t -= 250*dt
+
+        if self.accel_t > 250:
+            self.accel_t = 250
+        elif self.accel_t < 0:
+            self.accel_t = 0
+        
+        self.velocity = 2 * self.accel_t
+
+
+        
+
 class Ball2(GameObject):
     def __init__(self, master):
         super().__init__(master)
@@ -196,6 +262,7 @@ class Ball2(GameObject):
         self.max_speed = 50
         self.acceleration = 2
         self.deacceleration = 2
+        self.velocity = 10
 
         self.board_angles = (0,0)
         self.max_angle = 45
@@ -414,5 +481,5 @@ class Car(GameObject):
 
 if __name__ == "__main__":
     with MainGame() as game:
-        ball = Ball2(game)
+        boat = Boat(game)
         game.main_loop()
